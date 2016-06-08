@@ -14,13 +14,15 @@ class Exfil():
         # the list of encoders this tube will use - order matters
         self.encoders = list()
 
-        if not type(encoder_names) is list:
+        if not isinstance(encoder_names, list):
             raise TypeError("Encoders must be specified as a list of string names.")
-        if not type(channel_name) is str:
+        if not channel_name or not isinstance(channel_name, str):
             raise TypeError("Channel name must be specified as a string.")
 
         channel_class = self.__import_module('sneakers.channels', channel_name)
         for encoder in encoder_names:
+            if not encoder or not isinstance(encoder, str):
+                raise TypeError("Encoders must be specified as a list of string names.")
             encoder_class = self.__import_module('sneakers.encoders', encoder.lower())
             self.encoders.append({'name': encoder, 'class': encoder_class()})
 
@@ -35,6 +37,8 @@ class Exfil():
         return mod_class
 
     def set_channel_params(self, params):
+        if not isinstance(params, dict):
+            raise TypeError("Channel parameters must be specified as a dictionary.")
         ch = self.channel['class']
         ch_name = self.channel['name']
         for k in params.keys():
@@ -47,6 +51,8 @@ class Exfil():
                 ch.set_params(params)
 
     def set_encoder_params(self, encoder_name, params):
+        if not isinstance(params, dict):
+            raise TypeError("Encoder parameters must be specified as a dictionary.")
         enc = None
         for encoder in self.encoders:
             if encoder['name'] == encoder_name:
@@ -150,6 +156,10 @@ class Exfil():
         for msg in reversed(data):
             # strip and decode the headers
             tokenized = msg.split(" ", 2)
+            # if there aren't at least 3 tokens, the packet is not correct
+            # packet is: (packet number) (total packets in message) (msg body)
+            if len(tokenized) < 3:
+                continue
             packet_no = base94.decode(str(tokenized[0]))
             packet_total = base94.decode(str(tokenized[1]))
             msg = ''.join(tokenized[2:])
